@@ -1,3 +1,13 @@
+# ide
+.vim/
+.cache/
+.vscode/
+
+# build
+build/
+install/
+log/
+
 # Prerequisites
 *.d
 
