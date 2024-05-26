@@ -3,11 +3,11 @@ project(common)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(${CMAKE_SOURCE_DIR})
+
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
-
-include_directories(${CMAKE_SOURCE_DIR} ${rclcpp_INCLUDE_DIRS})
 
 add_subdirectory(common)
 add_subdirectory(test)

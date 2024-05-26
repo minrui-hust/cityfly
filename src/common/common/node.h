@@ -18,7 +18,9 @@ struct Node {
 protected:
   void run();
 
+  virtual void getParameters() {}
   virtual void configure() {}
+  virtual void connect() {}
   virtual void preRun() {}
   virtual void runOnline();
   virtual void runOffline() {}
@@ -32,7 +34,9 @@ protected:
 };
 
 inline void Node::start() {
+  getParameters();
   configure();
+  connect();
   preRun();
   run();
   postRun();
