@@ -1,5 +1,6 @@
 #include "cv_bridge/cv_bridge.h"
-#include "depthai/utility/Clock.hpp"
+
+#include "common/log.h"
 
 #include "oak_ffc_4p.h"
 
@@ -7,7 +8,7 @@ namespace cityfly::sensor {
 
 namespace {
 
-int64_t ToStamp(
+Stamp FromTimePoint(
     const std::chrono::time_point<std::chrono::steady_clock,
                                   std::chrono::steady_clock::duration> &tp) {
   return tp.time_since_epoch().count();
@@ -17,13 +18,32 @@ int64_t ToStamp(
 
 OakFfc4p::OakFfc4p() : Node("oak_ffc_4p") {}
 
-void OakFfc4p::getParameters() {}
+bool OakFfc4p::getParameters() {
+  cfg_.imu_rate = node_->get_parameter_or("imu_rate", 100);
+  cfg_.cam_fps = node_->get_parameter_or("cam_fps", 10.0f);
 
-void OakFfc4p::configure() {
-  device_ = std::make_shared<Device>(constructPipeline());
+  return true;
 }
 
-void OakFfc4p::connect() {
+bool OakFfc4p::configure() {
+  try { // try to open device
+    SINFO << "Opening oak device...";
+    device_ = std::make_shared<Device>();
+  } catch (const std::exception &) {
+    SINFO << "Failed to open device";
+    return false;
+  }
+
+  // try start pipeline
+  if (!device_->startPipeline(constructPipeline())) {
+    SINFO << "Failed to start pipeline";
+    return false;
+  }
+
+  return true;
+}
+
+bool OakFfc4p::connect() {
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu", 1);
 
   // clang-format off
@@ -32,26 +52,31 @@ void OakFfc4p::connect() {
   img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 1);
   img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 1);
   // clang-format on
+
+  return true;
 }
 
-void OakFfc4p::runOnline() {
+bool OakFfc4p::runOnline() {
   threads_["imu"] = std::thread([this]() { pollImu(); });
   threads_["cam_front_l"] = std::thread([this]() { pollImage("cam_front_l"); });
   threads_["cam_front_r"] = std::thread([this]() { pollImage("cam_front_r"); });
   threads_["cam_down_l"] = std::thread([this]() { pollImage("cam_down_l"); });
   threads_["cam_down_r"] = std::thread([this]() { pollImage("cam_down_r"); });
 
-  std::cout << "Driver running..." << std::endl;
+  SINFO << "Driver running...";
 
   // wait for all thread to join
   for (auto &[_, thread] : threads_) {
     thread.join();
   }
+
+  return true;
 }
 
-void OakFfc4p::clean() {
-  std::cout << "closing device" << std::endl;
+bool OakFfc4p::clean() {
+  SINFO << "closing device";
   device_->close();
+  return true;
 }
 
 Pipeline OakFfc4p::constructPipeline() {
@@ -69,9 +94,10 @@ Pipeline OakFfc4p::constructPipeline() {
 }
 
 void OakFfc4p::createImu(Pipeline &pipeline) {
+  auto imu_sensors = std::vector<dai::IMUSensor>{
+      dai::IMUSensor::ACCELEROMETER, dai::IMUSensor::GYROSCOPE_UNCALIBRATED};
   auto imu = pipeline.create<node::IMU>();
-  imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
-  imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+  imu->enableIMUSensor(imu_sensors, cfg_.imu_rate);
   imu->setBatchReportThreshold(1);
   imu->setMaxBatchReports(10);
 
@@ -99,26 +125,40 @@ void OakFfc4p::createCamera(Pipeline &pipeline, const std::string &name,
 
 void OakFfc4p::pollImu() {
   auto queue = device_->getOutputQueue("imu", 10, false);
+  Vector3 acc_interp;
+  int imu_seq = -1;
+
   while (rclcpp::ok()) {
     auto imu_data = queue->get<IMUData>();
     for (const auto imu_pkt : imu_data->packets) {
-      auto &acc = imu_pkt.acceleroMeter;
-      auto &gyr = imu_pkt.gyroscope;
+      const auto &acc = imu_pkt.acceleroMeter;
+      const auto &gyr = imu_pkt.gyroscope;
+      auto acc_stamp = FromTimePoint(acc.getTimestamp());
+      auto gyr_stamp = FromTimePoint(gyr.getTimestamp());
 
-      sensor_msgs::msg::Imu imu_msg;
-      imu_msg.header.frame_id = "imu";
-      imu_msg.header.stamp.sec = acc.timestamp.sec;
-      imu_msg.header.stamp.nanosec = acc.timestamp.nsec;
+      acc_interp_.put(acc_stamp, {acc.x, acc.y, acc.z});
 
-      imu_msg.linear_acceleration.x = acc.x;
-      imu_msg.linear_acceleration.y = acc.y;
-      imu_msg.linear_acceleration.z = acc.z;
+      if (gyr.sequence != imu_seq) {
+        imu_seq = gyr.sequence;
 
-      imu_msg.angular_velocity.x = gyr.x;
-      imu_msg.angular_velocity.y = gyr.y;
-      imu_msg.angular_velocity.z = gyr.z;
+        acc_interp_.get(gyr_stamp, &acc_interp);
 
-      imu_pub_->publish(imu_msg);
+        sensor_msgs::msg::Imu imu_msg;
+        imu_msg.header.frame_id = "imu";
+        imu_msg.header.stamp = ToRosTime(gyr_stamp);
+
+        imu_msg.linear_acceleration.x = acc_interp.x();
+        imu_msg.linear_acceleration.y = acc_interp.y();
+        imu_msg.linear_acceleration.z = acc_interp.z();
+
+        imu_msg.angular_velocity.x = gyr.x;
+        imu_msg.angular_velocity.y = gyr.y;
+        imu_msg.angular_velocity.z = gyr.z;
+
+        imu_pub_->publish(imu_msg);
+      } else {
+        SDEBUG << "Drop duplicated imu pkt";
+      }
     }
   }
 }
@@ -129,13 +169,11 @@ void OakFfc4p::pollImage(const std::string &name) {
 
   while (rclcpp::ok()) {
     auto img = queue->get<ImgFrame>();
-
-    int64_t stamp = ToStamp(img->getTimestamp());
+    auto stamp = FromTimePoint(img->getTimestamp(CameraExposureOffset::MIDDLE));
 
     std_msgs::msg::Header header;
     header.frame_id = name;
-    header.stamp.sec = stamp / 1000000000;
-    header.stamp.nanosec = stamp % 1000000000;
+    header.stamp = ToRosTime(stamp);
 
     auto img_cv = img->getFrame(false);
     auto img_msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();

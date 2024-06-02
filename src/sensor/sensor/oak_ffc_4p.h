@@ -3,6 +3,7 @@
 
 #include "depthai/depthai.hpp"
 
+#include "common/interpolater.h"
 #include "common/node.h"
 
 namespace cityfly::sensor {
@@ -11,19 +12,19 @@ using namespace dai;
 using namespace common;
 
 struct OakFfc4pConfig {
-  uint32_t imu_rate = 100;
-  float cam_fps = 20;
+  int imu_rate = 100;
+  float cam_fps = 10;
 };
 
 struct OakFfc4p : public Node {
   OakFfc4p();
 
 protected:
-  void getParameters() override;
-  void configure() override;
-  void connect() override;
-  void runOnline() override;
-  void clean() override;
+  bool getParameters() override;
+  bool configure() override;
+  bool connect() override;
+  bool runOnline() override;
+  bool clean() override;
 
   Pipeline constructPipeline();
 
@@ -43,6 +44,8 @@ protected:
   Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
   std::map<std::string, Publisher<sensor_msgs::msg::Image>::SharedPtr>
       img_pubs_;
+
+  Interpolater<Vector3> acc_interp_{100000, 0};
 };
 
 } // namespace cityfly::sensor

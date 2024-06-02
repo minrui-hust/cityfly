@@ -16,16 +16,16 @@ struct Node {
   void start();
 
 protected:
-  void run();
+  virtual bool getParameters() { return true; }
+  virtual bool configure() { return true; }
+  virtual bool connect() { return true; }
+  virtual bool preRun() { return true; }
+  virtual bool runOnline();
+  virtual bool runOffline() { return true; }
+  virtual bool postRun() { return true; }
+  virtual bool clean() { return true; }
 
-  virtual void getParameters() {}
-  virtual void configure() {}
-  virtual void connect() {}
-  virtual void preRun() {}
-  virtual void runOnline();
-  virtual void runOffline() {}
-  virtual void postRun() {}
-  virtual void clean() {}
+  bool run();
 
 protected:
   std::shared_ptr<rclcpp::Node> node_;
@@ -34,23 +34,46 @@ protected:
 };
 
 inline void Node::start() {
-  getParameters();
-  configure();
-  connect();
-  preRun();
-  run();
-  postRun();
-  clean();
-}
+  if (!getParameters()) {
+    return;
+  }
 
-inline void Node::run() {
-  if (offline_) {
-    runOffline();
-  } else {
-    runOnline();
+  if (!configure()) {
+    return;
+  }
+
+  if (!connect()) {
+    return;
+  }
+
+  if (!preRun()) {
+    return;
+  }
+
+  if (!run()) {
+    return;
+  }
+
+  if (!postRun()) {
+    return;
+  }
+
+  if (!clean()) {
+    return;
   }
 }
 
-inline void Node::runOnline() { rclcpp::spin(node_); }
+inline bool Node::run() {
+  if (offline_) {
+    return runOffline();
+  } else {
+    return runOnline();
+  }
+}
+
+inline bool Node::runOnline() {
+  rclcpp::spin(node_);
+  return true;
+}
 
 } // namespace cityfly::common
