@@ -27,3 +27,12 @@ include_directories(${g3sinks_binary_dir}/install/include)
 install(DIRECTORY ${g3sinks_binary_dir}/install/include/g3sinks
         DESTINATION include)
 install(DIRECTORY ${g3sinks_binary_dir}/install/lib/ DESTINATION lib)
+
+# msync
+include_directories(${thirdparty_dir}/msync)
+install(
+  DIRECTORY ${thirdparty_dir}/msync/msync # source directory
+  DESTINATION include # target directory
+  FILES_MATCHING # install only matched files
+  PATTERN "*.h" # select header files
+)

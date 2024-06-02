@@ -2,7 +2,8 @@ file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 add_library(${PROJECT_NAME} SHARED ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} depthai::opencv)
-ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs cv_bridge common)
+ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs cv_bridge
+                          image_transport common)
 
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/ # source directory

@@ -26,6 +26,9 @@ bool OakFfc4p::getParameters() {
 }
 
 bool OakFfc4p::configure() {
+  img_transport_ = std::shared_ptr<image_transport::ImageTransport>(
+      new image_transport::ImageTransport(node_));
+
   try { // try to open device
     SINFO << "Opening oak device...";
     device_ = std::make_shared<Device>();
@@ -47,10 +50,10 @@ bool OakFfc4p::connect() {
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu", 1);
 
   // clang-format off
-  img_pubs_["cam_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_l", 1);
-  img_pubs_["cam_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_r", 1);
-  img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 1);
-  img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 1);
+  img_transport_pubs_["cam_front_l"] = img_transport_->advertise("cam_front_l", 1);
+  img_transport_pubs_["cam_front_r"] = img_transport_->advertise("cam_front_r", 1);
+  img_transport_pubs_["cam_down_l"]  = img_transport_->advertise("cam_down_l" , 1);
+  img_transport_pubs_["cam_down_r"]  = img_transport_->advertise("cam_down_r" , 1);
   // clang-format on
 
   return true;
@@ -84,10 +87,10 @@ Pipeline OakFfc4p::constructPipeline() {
 
   // clang-format off
   createImu(pipeline);
-  createCamera(pipeline, "cam_front_l", CameraBoardSocket::CAM_A, CameraControl::FrameSyncMode::OUTPUT);
-  createCamera(pipeline, "cam_front_r", CameraBoardSocket::CAM_D, CameraControl::FrameSyncMode::INPUT );
-  createCamera(pipeline, "cam_down_l" , CameraBoardSocket::CAM_B, CameraControl::FrameSyncMode::OFF   );
-  createCamera(pipeline, "cam_down_r" , CameraBoardSocket::CAM_C, CameraControl::FrameSyncMode::OFF   );
+  createCamera(pipeline, "cam_front_l", CameraBoardSocket::CAM_D, CameraControl::FrameSyncMode::INPUT );
+  createCamera(pipeline, "cam_front_r", CameraBoardSocket::CAM_A, CameraControl::FrameSyncMode::OUTPUT);
+  createCamera(pipeline, "cam_down_l" , CameraBoardSocket::CAM_C, CameraControl::FrameSyncMode::OFF   );
+  createCamera(pipeline, "cam_down_r" , CameraBoardSocket::CAM_B, CameraControl::FrameSyncMode::OFF   );
   // clang-format on
 
   return pipeline;
@@ -125,39 +128,49 @@ void OakFfc4p::createCamera(Pipeline &pipeline, const std::string &name,
 
 void OakFfc4p::pollImu() {
   auto queue = device_->getOutputQueue("imu", 10, false);
-  Vector3 acc_interp;
-  int imu_seq = -1;
+  bool timeout;
+  int last_acc_stamp = -1;
+  int last_gyr_stamp = -1;
+
+  imu_sync_.registerCallback([&](const Time stamp,
+                                 const std::pair<Vector3, bool> &acc,
+                                 const std::pair<Vector3, bool> &gyr) {
+    sensor_msgs::msg::Imu imu_msg;
+    imu_msg.header.frame_id = "imu";
+    imu_msg.header.stamp = ToRosTime(stamp);
+
+    imu_msg.linear_acceleration.x = acc.first.x();
+    imu_msg.linear_acceleration.y = acc.first.y();
+    imu_msg.linear_acceleration.z = acc.first.z();
+
+    imu_msg.angular_velocity.x = gyr.first.x();
+    imu_msg.angular_velocity.y = gyr.first.y();
+    imu_msg.angular_velocity.z = gyr.first.z();
+
+    imu_pub_->publish(imu_msg);
+  });
 
   while (rclcpp::ok()) {
-    auto imu_data = queue->get<IMUData>();
-    for (const auto imu_pkt : imu_data->packets) {
+    auto imu_data = queue->get<IMUData>(std::chrono::seconds(1), timeout);
+    if (timeout) {
+      SWARN << "Poll imu data timeout";
+      continue;
+    }
+
+    for (const auto &imu_pkt : imu_data->packets) {
       const auto &acc = imu_pkt.acceleroMeter;
       const auto &gyr = imu_pkt.gyroscope;
       auto acc_stamp = FromTimePoint(acc.getTimestamp());
       auto gyr_stamp = FromTimePoint(gyr.getTimestamp());
 
-      acc_interp_.put(acc_stamp, {acc.x, acc.y, acc.z});
+      if (acc_stamp != last_acc_stamp) {
+        imu_sync_.push<0>(acc_stamp, {acc.x, acc.y, acc.z});
+        last_acc_stamp = acc_stamp;
+      }
 
-      if (gyr.sequence != imu_seq) {
-        imu_seq = gyr.sequence;
-
-        acc_interp_.get(gyr_stamp, &acc_interp);
-
-        sensor_msgs::msg::Imu imu_msg;
-        imu_msg.header.frame_id = "imu";
-        imu_msg.header.stamp = ToRosTime(gyr_stamp);
-
-        imu_msg.linear_acceleration.x = acc_interp.x();
-        imu_msg.linear_acceleration.y = acc_interp.y();
-        imu_msg.linear_acceleration.z = acc_interp.z();
-
-        imu_msg.angular_velocity.x = gyr.x;
-        imu_msg.angular_velocity.y = gyr.y;
-        imu_msg.angular_velocity.z = gyr.z;
-
-        imu_pub_->publish(imu_msg);
-      } else {
-        SDEBUG << "Drop duplicated imu pkt";
+      if (gyr_stamp != last_gyr_stamp) {
+        imu_sync_.push<1>(gyr_stamp, {gyr.x, gyr.y, gyr.z});
+        last_gyr_stamp = gyr_stamp;
       }
     }
   }
@@ -165,10 +178,14 @@ void OakFfc4p::pollImu() {
 
 void OakFfc4p::pollImage(const std::string &name) {
   auto queue = device_->getOutputQueue(name, 2, false);
-  auto pub = img_pubs_.at(name);
+  bool timeout;
 
   while (rclcpp::ok()) {
-    auto img = queue->get<ImgFrame>();
+    auto img = queue->get<ImgFrame>(std::chrono::seconds(1), timeout);
+    if (timeout) {
+      SWARN << "Poll for image " << name << " timeout";
+      continue;
+    }
     auto stamp = FromTimePoint(img->getTimestamp(CameraExposureOffset::MIDDLE));
 
     std_msgs::msg::Header header;
@@ -176,9 +193,9 @@ void OakFfc4p::pollImage(const std::string &name) {
     header.stamp = ToRosTime(stamp);
 
     auto img_cv = img->getFrame(false);
-    auto img_msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
 
-    pub->publish(*img_msg);
+    auto img_msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
+    img_transport_pubs_.at(name).publish(*img_msg);
   }
 }
 
