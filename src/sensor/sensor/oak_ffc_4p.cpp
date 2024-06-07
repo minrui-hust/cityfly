@@ -48,10 +48,10 @@ bool OakFfc4p::connect() {
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu", 1);
 
   // clang-format off
-  img_pubs_["cam_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_l", 1);
-  img_pubs_["cam_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_r", 1);
-  img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 1);
-  img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 1);
+  img_pubs_["cam_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_l", 3);
+  img_pubs_["cam_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_r", 3);
+  img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 3);
+  img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 3);
   // clang-format on
 
   return true;
