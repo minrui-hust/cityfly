@@ -26,8 +26,6 @@ bool OakFfc4p::getParameters() {
 }
 
 bool OakFfc4p::configure() {
-  img_transport_ = std::shared_ptr<image_transport::ImageTransport>(
-      new image_transport::ImageTransport(node_));
 
   try { // try to open device
     SINFO << "Opening oak device...";
@@ -50,10 +48,10 @@ bool OakFfc4p::connect() {
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu", 1);
 
   // clang-format off
-  img_transport_pubs_["cam_front_l"] = img_transport_->advertise("cam_front_l", 1);
-  img_transport_pubs_["cam_front_r"] = img_transport_->advertise("cam_front_r", 1);
-  img_transport_pubs_["cam_down_l"]  = img_transport_->advertise("cam_down_l" , 1);
-  img_transport_pubs_["cam_down_r"]  = img_transport_->advertise("cam_down_r" , 1);
+  img_pubs_["cam_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_l", 1);
+  img_pubs_["cam_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_r", 1);
+  img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 1);
+  img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 1);
   // clang-format on
 
   return true;
@@ -178,6 +176,7 @@ void OakFfc4p::pollImu() {
 
 void OakFfc4p::pollImage(const std::string &name) {
   auto queue = device_->getOutputQueue(name, 2, false);
+  auto &pub = img_pubs_.at(name);
   bool timeout;
 
   while (rclcpp::ok()) {
@@ -194,8 +193,8 @@ void OakFfc4p::pollImage(const std::string &name) {
 
     auto img_cv = img->getFrame(false);
 
-    auto img_msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
-    img_transport_pubs_.at(name).publish(*img_msg);
+    auto msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
+    pub->publish(*msg);
   }
 }
 

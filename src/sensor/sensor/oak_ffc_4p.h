@@ -1,5 +1,3 @@
-#include "image_transport/image_transport.hpp"
-#include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
@@ -51,11 +49,10 @@ protected:
   std::shared_ptr<Device> device_;
   std::map<std::string, std::thread> threads_;
 
-  std::shared_ptr<image_transport::ImageTransport> img_transport_;
-
   Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
 
-  std::map<std::string, image_transport::Publisher> img_transport_pubs_;
+  std::map<std::string, Publisher<sensor_msgs::msg::Image>::SharedPtr>
+      img_pubs_;
 
   Sync imu_sync_{Policy{NANOS_PER_MILLI * 100, 0, kNormal},
                  Policy{NANOS_PER_MILLI * 100, 0, kMaster}};
