@@ -1,3 +1,4 @@
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
@@ -22,6 +23,7 @@ using Sync = SyncronizerMasterSlave<Policy, Policy>;
 struct OakFfc4pConfig {
   int imu_rate = 100;
   float cam_fps = 10;
+  bool compress = false;
 };
 
 struct OakFfc4p : public Node {
@@ -53,6 +55,9 @@ protected:
 
   std::map<std::string, Publisher<sensor_msgs::msg::Image>::SharedPtr>
       img_pubs_;
+
+  std::map<std::string, Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr>
+      img_compressed_pubs_;
 
   Sync imu_sync_{Policy{NANOS_PER_MILLI * 100, 0, kNormal},
                  Policy{NANOS_PER_MILLI * 100, 0, kMaster}};

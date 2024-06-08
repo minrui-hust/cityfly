@@ -1,4 +1,4 @@
-#include "cv_bridge/cv_bridge.h"
+#include "cv_bridge/cv_bridge.hpp"
 
 #include "common/log.h"
 
@@ -21,6 +21,7 @@ OakFfc4p::OakFfc4p() : Node("oak_ffc_4p") {}
 bool OakFfc4p::getParameters() {
   cfg_.imu_rate = node_->get_parameter_or("imu_rate", 100);
   cfg_.cam_fps = node_->get_parameter_or("cam_fps", 10.0f);
+  cfg_.compress = node_->get_parameter_or("compress", false);
 
   return true;
 }
@@ -47,22 +48,27 @@ bool OakFfc4p::configure() {
 bool OakFfc4p::connect() {
   imu_pub_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu", 1);
 
-  // clang-format off
-  img_pubs_["cam_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_l", 3);
-  img_pubs_["cam_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("cam_front_r", 3);
-  img_pubs_["cam_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_l" , 3);
-  img_pubs_["cam_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("cam_down_r" , 3);
-  // clang-format on
+  if (cfg_.compress) { // clang-format off
+    img_compressed_pubs_["img_front_l"] = node_->create_publisher<sensor_msgs::msg::CompressedImage>("img_compressed_front_l", 3);
+    img_compressed_pubs_["img_front_r"] = node_->create_publisher<sensor_msgs::msg::CompressedImage>("img_compressed_front_r", 3);
+    img_compressed_pubs_["img_down_l"]  = node_->create_publisher<sensor_msgs::msg::CompressedImage>("img_compressed_down_l" , 3);
+    img_compressed_pubs_["img_down_r"]  = node_->create_publisher<sensor_msgs::msg::CompressedImage>("img_compressed_down_r" , 3);
+  }else{
+    img_pubs_["img_front_l"] = node_->create_publisher<sensor_msgs::msg::Image>("img_front_l", 3);
+    img_pubs_["img_front_r"] = node_->create_publisher<sensor_msgs::msg::Image>("img_front_r", 3);
+    img_pubs_["img_down_l"]  = node_->create_publisher<sensor_msgs::msg::Image>("img_down_l" , 3);
+    img_pubs_["img_down_r"]  = node_->create_publisher<sensor_msgs::msg::Image>("img_down_r" , 3);
+  } // clang-format on
 
   return true;
 }
 
 bool OakFfc4p::runOnline() {
   threads_["imu"] = std::thread([this]() { pollImu(); });
-  threads_["cam_front_l"] = std::thread([this]() { pollImage("cam_front_l"); });
-  threads_["cam_front_r"] = std::thread([this]() { pollImage("cam_front_r"); });
-  threads_["cam_down_l"] = std::thread([this]() { pollImage("cam_down_l"); });
-  threads_["cam_down_r"] = std::thread([this]() { pollImage("cam_down_r"); });
+  threads_["img_front_l"] = std::thread([this]() { pollImage("img_front_l"); });
+  threads_["img_front_r"] = std::thread([this]() { pollImage("img_front_r"); });
+  threads_["img_down_l"] = std::thread([this]() { pollImage("img_down_l"); });
+  threads_["img_down_r"] = std::thread([this]() { pollImage("img_down_r"); });
 
   SINFO << "Driver running...";
 
@@ -85,10 +91,10 @@ Pipeline OakFfc4p::constructPipeline() {
 
   // clang-format off
   createImu(pipeline);
-  createCamera(pipeline, "cam_front_l", CameraBoardSocket::CAM_D, CameraControl::FrameSyncMode::INPUT );
-  createCamera(pipeline, "cam_front_r", CameraBoardSocket::CAM_A, CameraControl::FrameSyncMode::OUTPUT);
-  createCamera(pipeline, "cam_down_l" , CameraBoardSocket::CAM_C, CameraControl::FrameSyncMode::OFF   );
-  createCamera(pipeline, "cam_down_r" , CameraBoardSocket::CAM_B, CameraControl::FrameSyncMode::OFF   );
+  createCamera(pipeline, "img_front_l", CameraBoardSocket::CAM_D, CameraControl::FrameSyncMode::INPUT );
+  createCamera(pipeline, "img_front_r", CameraBoardSocket::CAM_A, CameraControl::FrameSyncMode::OUTPUT);
+  createCamera(pipeline, "img_down_l" , CameraBoardSocket::CAM_C, CameraControl::FrameSyncMode::OFF   );
+  createCamera(pipeline, "img_down_r" , CameraBoardSocket::CAM_B, CameraControl::FrameSyncMode::OFF   );
   // clang-format on
 
   return pipeline;
@@ -176,7 +182,6 @@ void OakFfc4p::pollImu() {
 
 void OakFfc4p::pollImage(const std::string &name) {
   auto queue = device_->getOutputQueue(name, 2, false);
-  auto &pub = img_pubs_.at(name);
   bool timeout;
 
   while (rclcpp::ok()) {
@@ -193,8 +198,14 @@ void OakFfc4p::pollImage(const std::string &name) {
 
     auto img_cv = img->getFrame(false);
 
-    auto msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
-    pub->publish(*msg);
+    if (cfg_.compress) {
+      auto msg =
+          cv_bridge::CvImage(header, "mono8", img_cv).toCompressedImageMsg();
+      img_compressed_pubs_.at(name)->publish(*msg);
+    } else {
+      auto msg = cv_bridge::CvImage(header, "mono8", img_cv).toImageMsg();
+      img_pubs_.at(name)->publish(*msg);
+    }
   }
 }
 
