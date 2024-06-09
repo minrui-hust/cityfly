@@ -25,17 +25,18 @@ RUN cd .config/nvim && ./install.bash && rm -rf /tmp/* && \
   clangd && \
   apt-get autoclean && rm -rf /var/lib/apt/lists/*
 
+RUN echo "ubuntu:123" | chpasswd
+
 RUN echo \
 "\n \
 export TERM=xterm-256color\n \
 \n \
 source /opt/ros/jazzy/setup.bash\n \
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp\n \
+export FASTRTPS_DEFAULT_PROFILES_FILE=/home/ubuntu/cityfly/src/.fastrtps.xml\n \
 " >> /home/ubuntu/.bashrc
 
-RUN echo "ubuntu:123" | chpasswd
-
 USER ubuntu
-WORKDIR /home/ubuntu
+WORKDIR /home/ubuntu/cityfly
 ENTRYPOINT [ "/bin/bash" ]
 
