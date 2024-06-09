@@ -8,6 +8,7 @@ docker run -it \
   --ipc host \
   --network host \
   --env DISPLAY=$DISPLAY \
+  --env TERM=$TERM \
   --volume /dev:/dev \
   --volume /tmp/.X11-unix:/tmp/.X11-unix \
   --volume $HOME/.ssh:/home/ubuntu/.ssh \
