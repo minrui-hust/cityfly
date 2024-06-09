@@ -8,21 +8,32 @@ RUN git clone -b main https://github.com/luxonis/depthai-core.git && cd depthai-
   make -j4 && make install && \
   rm -rf /tmp/* /root/*
 
-WORKDIR /home/ubuntu/.config
+USER ubuntu
+WORKDIR /home/ubuntu
 
 # nvim & tmux
-RUN git clone -b 24.04+ https://github.com/minrui-hust/nvim.git && cd nvim && \
-  ./install.bash && \
-  git clone https://github.com/minrui-hust/tmux.git && \
+RUN mkdir .config && cd .config && \ 
+  git clone -b 24.04+ https://github.com/minrui-hust/nvim.git && \
+  git clone -b master https://github.com/minrui-hust/tmux.git
+
+USER root
+
+RUN cd .config/nvim && ./install.bash && rm -rf /tmp/* && \
+  apt-get install -y \
+  tmux \
+  exuberant-ctags \
+  clangd && \
   apt-get autoclean && rm -rf /var/lib/apt/lists/*
 
 RUN echo \
-  "\n \
-  export TERM=xterm-256color\n \
-  \n \
-  source /opt/ros/jazzy/setup.bash\n \
-  export RMW_IMPLEMENTATION=rmw_fastrtps_cpp\n \
-  " >> /home/ubuntu/.bashrc
+"\n \
+export TERM=xterm-256color\n \
+\n \
+source /opt/ros/jazzy/setup.bash\n \
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp\n \
+" >> /home/ubuntu/.bashrc
+
+RUN echo "ubuntu:123" | chpasswd
 
 USER ubuntu
 WORKDIR /home/ubuntu
