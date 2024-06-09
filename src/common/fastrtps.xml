@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+        <transport_descriptor>
+            <transport_id>udp_transport</transport_id>
+            <type>UDPv4</type>
+						<!-- <interfaceWhiteList> -->
+            <!--     <interface>eth0</interface> -->
+            <!--     <interface>lo</interface> -->
+            <!-- </interfaceWhiteList> -->
+        </transport_descriptor>
+    
+        <transport_descriptor>
+            <transport_id>shm_transport</transport_id>
+            <type>SHM</type>
+            <segment_size>2048000</segment_size>
+            <maxMessageSize>2000000</maxMessageSize>
+        </transport_descriptor>
+    </transport_descriptors>
+
+    <participant profile_name="CustomParticipant"  is_default_profile="true">
+        <rtps>
+            <useBuiltinTransports>false</useBuiltinTransports>
+
+            <userTransports>
+                <transport_id>udp_transport</transport_id>
+                <transport_id>shm_transport</transport_id>
+            </userTransports>
+        </rtps>
+    </participant>
+</profiles>

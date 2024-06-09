@@ -25,6 +25,11 @@ include(thirdparty/thirdparty.cmake)
 add_subdirectory(common)
 add_subdirectory(test)
 
+install(
+  FILES ${CMAKE_SOURCE_DIR}/fastrtps.xml
+  DESTINATION share
+)
+
 ament_export_include_directories(include)
 ament_export_libraries(g3log g3logrotate g3syslog)
 

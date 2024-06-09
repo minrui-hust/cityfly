@@ -1,0 +1,22 @@
+FROM cityfly:dev as dev
+
+SHELL ["/bin/bash", "-c"]
+
+WORKDIR /tmp
+
+ADD src src
+RUN source /opt/ros/jazzy/setup.bash && colcon build --merge-install --parallel-workers=4
+
+
+FROM ros:jazzy-perception
+
+# copy libs
+COPY --from=dev /usr/local/lib/libdepthai* /usr/local/lib/
+COPY --from=dev /usr/local/lib/cmake /usr/local/lib/cmake
+COPY --from=dev /tmp/install /opt/cityfly
+
+RUN ldconfig
+
+USER ubuntu
+ENTRYPOINT ["/opt/cityfly/share/entrypoint.bash"]
+
