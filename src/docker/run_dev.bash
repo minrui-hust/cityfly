@@ -1,6 +1,7 @@
-#! /bin/sh
+#! /bin/bash
 
-workspace=$1
+script_dir=$(cd $(dirname $0) && pwd)
+workspace_dir=$(dirname $(dirname $script_dir))
 
 docker run -it \
   --privileged \
@@ -10,5 +11,5 @@ docker run -it \
   --volume /dev:/dev \
   --volume /tmp/.X11-unix:/tmp/.X11-unix \
   --volume $HOME/.ssh:/home/ubuntu/.ssh \
-  --volume $workspace:/home/ubuntu/cityfly \
+  --volume $workspace_dir:/home/ubuntu/cityfly \
   cityfly:dev

@@ -1,8 +1,9 @@
-#! /bin/sh
+#! /bin/bash
 
 launch_cmd=$*
 
 docker run -it \
+  --rm \
   --privileged \
   --ipc host \
   --network host \
