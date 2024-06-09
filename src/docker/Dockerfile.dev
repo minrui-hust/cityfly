@@ -22,6 +22,7 @@ RUN cd .config/nvim && ./install.bash && rm -rf /tmp/* && \
   apt-get install -y \
   tmux \
   exuberant-ctags \
+  ssh-client \
   clangd && \
   apt-get autoclean && rm -rf /var/lib/apt/lists/*
 

@@ -9,5 +9,6 @@ docker run -it \
   --env DISPLAY=$DISPLAY \
   --volume /dev:/dev \
   --volume /tmp/.X11-unix:/tmp/.X11-unix \
+  --volume $HOME/.ssh:/home/ubuntu/.ssh \
   --volume $workspace:/home/ubuntu/cityfly \
   cityfly:dev
