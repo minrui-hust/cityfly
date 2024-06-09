@@ -1,0 +1,30 @@
+FROM ros:jazzy-perception
+
+WORKDIR /tmp
+
+# depthai-core
+RUN git clone -b main https://github.com/luxonis/depthai-core.git && cd depthai-core && git submodule update --init --recursive && \
+  mkdir build && cd build && cmake .. -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && \
+  make -j4 && make install && \
+  rm -rf /tmp/* /root/*
+
+WORKDIR /home/ubuntu/.config
+
+# nvim & tmux
+RUN git clone -b 24.04+ https://github.com/minrui-hust/nvim.git && cd nvim && \
+  ./install.bash && \
+  git clone https://github.com/minrui-hust/tmux.git && \
+  apt-get autoclean && rm -rf /var/lib/apt/lists/*
+
+RUN echo \
+  "\n \
+  export TERM=xterm-256color\n \
+  \n \
+  source /opt/ros/jazzy/setup.bash\n \
+  export RMW_IMPLEMENTATION=rmw_fastrtps_cpp\n \
+  " >> /home/ubuntu/.bashrc
+
+USER ubuntu
+WORKDIR /home/ubuntu
+ENTRYPOINT [ "/bin/bash" ]
+
