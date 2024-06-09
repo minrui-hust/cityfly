@@ -27,6 +27,8 @@ find_package(depthai REQUIRED)
 add_subdirectory(sensor)
 add_subdirectory(node)
 
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
+
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 
