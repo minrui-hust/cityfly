@@ -18,5 +18,6 @@ COPY --from=dev /tmp/install /opt/cityfly
 RUN ldconfig
 
 USER ubuntu
+WORKDIR /workspace
 ENTRYPOINT ["/opt/cityfly/share/entrypoint.bash"]
 
