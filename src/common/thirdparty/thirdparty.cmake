@@ -18,6 +18,7 @@ install(DIRECTORY ${g3log_binary_dir}/install/lib/ DESTINATION lib)
 set(g3sinks_binary_dir ${CMAKE_BINARY_DIR}/thirdparty/g3sinks)
 ExternalProject_Add(
   g3sinks
+  DEPENDS g3log
   SOURCE_DIR ${thirdparty_dir}/g3sinks
   BINARY_DIR ${g3sinks_binary_dir}/build
   CMAKE_ARGS -DCHOICE_BUILD_TESTS=OFF -DCHOICE_BUILD_EXAMPLES=OFF
