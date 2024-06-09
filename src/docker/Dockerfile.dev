@@ -23,6 +23,7 @@ RUN cd .config/nvim && ./install.bash && rm -rf /tmp/* && \
   tmux \
   exuberant-ctags \
   ssh-client \
+  ros-jazzy-rviz2 \
   clangd && \
   apt-get autoclean && rm -rf /var/lib/apt/lists/*
 
