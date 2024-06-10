@@ -10,7 +10,7 @@ cityfly(低空飞行)，是一个基于ros2(jazzy)的用于无人机低空飞行
 **安装docker**  
 docker的安装参考官方教程，(Install Docker Engine on Ubuntu)[https://docs.docker.com/engine/install/ubuntu/],记得完成(Post-installation steps for Linux)[https://docs.docker.com/engine/install/linux-postinstall/]
 
-**编译dev镜像**
+**编译dev镜像**  
 首先clone仓库到本地(cityfly的仓库是一个标准的ros wrokspace):
 ```bash
 git clone https://github.com/minrui-hust/cityfly.git
@@ -30,7 +30,7 @@ docker images
 # ...
 ```
 
-**启动容器**
+**启动容器**  
 启动容器最简单的方式就是docker run，但是作为一个开发环境，需要很多额外的参数，来支持容器和宿主机之间的互动，例如共享/dev下的硬件，共享GUI等，因此cityfly提供了便捷脚本用来启动开发用的容器。运行
 ```bash
 ./src/docker/run_dev.bash
