@@ -9,7 +9,7 @@ cityfly(低空飞行)，是一个基于ros2(jazzy)的用于无人机低空飞行
 4. 启动IDE
 
 **安装docker**  
-docker的安装参考官方教程，(Install Docker Engine on Ubuntu)[https://docs.docker.com/engine/install/ubuntu/],记得完成(Post-installation steps for Linux)[https://docs.docker.com/engine/install/linux-postinstall/]
+docker的安装参考官方教程，[Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/),记得完成[Post-installation steps for Linux](https://docs.docker.com/engine/install/linux-postinstall/)
 
 **编译dev镜像**  
 首先clone仓库到本地(cityfly的仓库是一个标准的ros wrokspace):
