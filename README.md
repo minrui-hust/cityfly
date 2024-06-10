@@ -45,7 +45,13 @@ docker images
 ```bash
 colcon build
 ```
-期间会输出一些warning，主要是第三方库产生的。编译成功后说明整个环境setup成功。
+期间会输出一些warning，主要是第三方库产生的。编译成功后说明整个环境setup成功。  
+另外，也可以试试启动rviz2试试：
+```bash
+source ~/.bashrc
+rviz2
+```
+这个时候应该会弹出rviz2的图形界面，说明在容器中启动图形界面的软件功能正常。
 
 **启动IDE**   ，
 1. tmux+nvim的方式  
