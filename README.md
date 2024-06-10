@@ -6,6 +6,7 @@ cityfly(低空飞行)，是一个基于ros2(jazzy)的用于无人机低空飞行
 1. 安装docker
 2. 编译dev镜像
 3. 启动容器
+4. 启动IDE
 
 **安装docker**  
 docker的安装参考官方教程，(Install Docker Engine on Ubuntu)[https://docs.docker.com/engine/install/ubuntu/],记得完成(Post-installation steps for Linux)[https://docs.docker.com/engine/install/linux-postinstall/]
@@ -44,5 +45,18 @@ docker images
 ```bash
 colcon build
 ```
-期间会输出一些warning，主要是第三方库产生的。编译成功后说明整个环境setup成功
+期间会输出一些warning，主要是第三方库产生的。编译成功后说明整个环境setup成功。
+
+**启动IDE**   
+1. tmux+nvim的方式  
+dev容器已经完成了tmux和nvim的配置，只需要运行命令，等待nvim下载插件即可:
+```bash
+tmux
+# wait for tmux start up, first start may take seconds
+# then start nvim, and wait for nvim to download and install plugins
+nvim
+```
+2. vsode remote的方式
+TODO
+
 
