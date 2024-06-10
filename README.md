@@ -47,7 +47,7 @@ colcon build
 ```
 期间会输出一些warning，主要是第三方库产生的。编译成功后说明整个环境setup成功。
 
-**启动IDE**   
+**启动IDE**   ，
 1. tmux+nvim的方式  
 dev容器已经完成了tmux和nvim的配置，只需要运行命令，等待nvim下载插件即可:
 ```bash
@@ -59,4 +59,21 @@ nvim
 2. vsode remote的方式
 TODO
 
+# Running & Deploy
+cityfly运行和部署也是基于容器的，在开发完成后，
+1. 可以选择在开发环境内部运行
+2. 也可以选在在宿主机上运行
 
+**开发环境容器内运行**
+在开发环境内运行跟运行普通的程序并无区别，在此不做赘述
+
+**在宿主机运行**
+由于我们的开发环境是在容器内部，宿主机并没有配置开发环境，因此我们需要以启动容器的方式来运行cityfly相关的功能。首先，我们需要编译运行用的docker镜像，跟编译开发用的dev镜像类似，在cityfly文件夹下运行:
+```bash
+./src/docker/build.bash --run
+```
+编译该容器需要已经有dev镜像(如果没有跳过上面Setup的过程，肯定有), 等待编译完成后就可以运行了。以大家最为熟悉的rosbag录包为例：
+```bash
+./src/docker/run.bash ros2 bag record -a
+```
+容易发现，相比于原生的运行方式，只是在前面多了"./src/docker/run.bash", 这个脚本主要是临时启动一个容器并将后面的参数当成是terminal命令，直接透传给容器内的bash运行。
