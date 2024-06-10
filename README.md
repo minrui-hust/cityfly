@@ -16,7 +16,7 @@ docker的安装参考官方教程，(Install Docker Engine on Ubuntu)[https://do
 git clone https://github.com/minrui-hust/cityfly.git
 cd cityfly
 ```
-编译dev镜像：
+编译：
 ```bash
 ./src/docker/build.bash --dev
 ```
